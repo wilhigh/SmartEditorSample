@@ -1,0 +1,45 @@
+on:
+  # schedule:
+    # - cron: '0 * * * 1'
+  workflow_dispatch:
+
+name: SonarQube Workflow
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 1.11
+      uses: AdoptOpenJDK/install-jdk@v1
+      with:
+        version: '11'
+        architecture: x64
+        targets: 'JAVA_HOME'
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew build -x test
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: build
+        path: build/classes
+
+  sonarQube:
+    needs: build
+    name: SonarQube
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Donwload build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+        path: build/classes
+    - name: SonarQube Scan
+      uses: kitabisa/sonarqube-action@master
+      with:
+        host: ${{ secrets.SONAR_HOST }}
+        login: ${{ secrets.SONAR_TOKEN }}
+        projectBaseDir: '/github/workspace'
